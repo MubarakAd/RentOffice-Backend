@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -11,10 +8,68 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id          Int           @id @default(autoincrement())
+  email       String        @unique
+  name        String?
+  phone       String?
+  password    String
+  role        Role          @default(TENANT)
+  Rental      Rental[]
+}
+
+model Office {
+  id          Int           @id @default(autoincrement())
+  officeNo    String        @unique
+  floorNo     Int
+  officeArea  String
+  status      OfficeStatus  @default(available)
+  Rental      Rental[]
+}
+
+model Rental {
+  id         Int       @id @default(autoincrement())
+  tenantId   Int
+  officeId   Int
+  startDate  DateTime
+  endDate    DateTime?
+  rentAmount Float
+  office     Office    @relation(fields: [officeId], references: [id])
+  tenant     User      @relation(fields: [tenantId], references: [id])
+  payment    payment[]
+}
+
+// model Maintenance {
+//   id          Int               @id @default(autoincrement())
+//   officeId    Int
+//   tenantId    Int
+//   description String
+//   startDate   DateTime          @default(now())
+//   status      MaintenanceStatus @default(in_progress)
+//   Office      Office            @relation(fields: [officeId], references: [id])
+//   User        User              @relation(fields: [tenantId], references: [id])
+// }
+
+model Announcement {
+  id         Int      @id @default(autoincrement())
+  title      String
+  content    String
+  createdAt  DateTime @default(now())
+  expiryDate DateTime
+}
+
+model payment {
+  id          Int           @id @default(autoincrement())
+  rentalId    Int
+  amount      Float
+  paymentDate DateTime      @default(now())
+  status      PaymentStatus @default(pending)
+  Rental      Rental        @relation(fields: [rentalId], references: [id])
+}
+
 enum Role {
   ADMIN
   TENANT
-  MAINTENANCE
 }
 
 enum OfficeStatus {
@@ -24,8 +79,8 @@ enum OfficeStatus {
 }
 
 enum PaymentStatus {
-  paid
-  unpaid
+  pending
+  payed
   overdue
 }
 
@@ -33,68 +88,4 @@ enum MaintenanceStatus {
   open
   in_progress
   resolved
-}
-
-model User {
-  id               Int           @id @default(autoincrement())
-  email            String        @unique
-  name             String
-  phone            String
-  password         String
-  role             Role          @default(TENANT)
-  resetToken       String?       // For password resets
-  resetTokenExpiry DateTime?     // Token validity period
-  Rental           Rental[]
-  Maintenance      Maintenance[]
-}
-
-model Office {
-  id         Int          @id @default(autoincrement())
-  officeNo   String       @unique
-  area       Decimal
-  floorNo    Int
-  status     OfficeStatus @default(available)
-  Rental     Rental[]
-  Maintenance Maintenance[]
-}
-
-model Rental {
-  id         Int       @id @default(autoincrement())
-  officeId   Int
-  tenantId   Int
-  startDate  DateTime
-  endDate    DateTime?
-  monthlyRent Decimal
-  user       User      @relation(fields: [tenantId], references: [id])
-  office     Office    @relation(fields: [officeId], references: [id])
-  Payment    Payment[]
-}
-
-model Payment {
-  id          Int           @id @default(autoincrement())
-  rentalId    Int
-  dueDate     DateTime
-  paidDate    DateTime?
-  amount      Decimal
-  status      PaymentStatus @default(unpaid)
-  rental      Rental        @relation(fields: [rentalId], references: [id])
-}
-
-model Maintenance {
-  id          Int      @id @default(autoincrement())
-  tenantId    Int
-  officeId    Int
-  description String
-  status      MaintenanceStatus @default(open)
-  createdAt   DateTime @default(now())
-  tenant      User    @relation(fields: [tenantId], references: [id])
-  office      Office   @relation(fields: [officeId], references: [id])
-}
-
-model Announcement {
-  id         Int      @id @default(autoincrement())
-  title      String
-  content    String
-  createdAt  DateTime @default(now())
-  expireDate DateTime
 }
