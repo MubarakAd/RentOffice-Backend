@@ -1,5 +1,5 @@
 import { IsNotEmpty, IsNumber, IsString, IsEnum } from 'class-validator';
-import { OfficeStatus } from '../entities/office.entity';
+import { OfficeStatus } from '../enums/office.entity';
 
 export class CreateOfficeDto {
   @IsNotEmpty()
@@ -17,4 +17,8 @@ export class CreateOfficeDto {
   @IsNotEmpty()
   @IsEnum(OfficeStatus) // Validate against the OfficeStatus enum
   status: OfficeStatus;
+
+  @IsNotEmpty()
+  @IsNumber()
+  rentAmount: number;
 }

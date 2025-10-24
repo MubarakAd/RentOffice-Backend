@@ -9,22 +9,23 @@ datasource db {
 }
 
 model User {
-  id          Int           @id @default(autoincrement())
-  email       String        @unique
-  name        String?
-  phone       String?
-  password    String
-  role        Role          @default(TENANT)
-  Rental      Rental[]
+  id       Int      @id @default(autoincrement())
+  email    String   @unique
+  name     String?
+  phone    String?
+  password String
+  role     Role     @default(TENANT)
+  Rental   Rental[]
 }
 
 model Office {
-  id          Int           @id @default(autoincrement())
-  officeNo    String        @unique
-  floorNo     Int
-  officeArea  String
-  status      OfficeStatus  @default(available)
-  Rental      Rental[]
+  id         Int          @id @default(autoincrement())
+  officeNo   String       @unique
+  floorNo    Int
+  rentAmount Float
+  officeArea String
+  status     OfficeStatus @default(available)
+  Rental     Rental[]
 }
 
 model Rental {
@@ -36,7 +37,8 @@ model Rental {
   rentAmount Float
   office     Office    @relation(fields: [officeId], references: [id])
   tenant     User      @relation(fields: [tenantId], references: [id])
-  payment    payment[]
+
+  payment Payment[]
 }
 
 // model Maintenance {
@@ -58,13 +60,13 @@ model Announcement {
   expiryDate DateTime
 }
 
-model payment {
+model Payment {
   id          Int           @id @default(autoincrement())
   rentalId    Int
   amount      Float
   paymentDate DateTime      @default(now())
   status      PaymentStatus @default(pending)
-  Rental      Rental        @relation(fields: [rentalId], references: [id])
+  rental      Rental        @relation(fields: [rentalId], references: [id])
 }
 
 enum Role {

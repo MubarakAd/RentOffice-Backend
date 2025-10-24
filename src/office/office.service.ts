@@ -2,7 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { CreateOfficeDto } from './dto/create-office.dto';
 import { UpdateOfficeDto } from './dto/update-office.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { OfficeStatus } from './entities/office.entity';
+import { OfficeStatus } from './enums/office.entity';
 
 @Injectable()
 export class OfficeService {
