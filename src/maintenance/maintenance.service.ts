@@ -1,11 +1,17 @@
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
 import { UpdateMaintenanceDto } from './dto/update-maintenance.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { MailerServiceWrapper } from 'src/mailer/mailer.service';
 
 @Injectable()
 export class MaintenanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private mailer: MailerServiceWrapper,
+  ) {}
   async createMaintenance(
     tenantId: number,
     createMaintenanceDto: CreateMaintenanceDto,
@@ -16,7 +22,14 @@ export class MaintenanceService {
     if (!office) {
       throw new Error('Office not found');
     }
-    return this.prisma.maintenance.create({
+    const tenant = await this.prisma.user.findUnique({
+      where: { id: tenantId },
+    });
+
+    const admin = await this.prisma.user.findFirst({
+      where: { role: 'ADMIN' },
+    });
+    const maintenance = await this.prisma.maintenance.create({
       data: {
         description: createMaintenanceDto.description,
         startDate: new Date(createMaintenanceDto.startDate),
@@ -25,6 +38,15 @@ export class MaintenanceService {
         status: 'open',
       },
     });
+    if (admin && tenant) {
+      await this.mailer.sendMaintenanceRequestEmail(
+        admin.email,
+        tenant.name || 'Tenant',
+        createMaintenanceDto.officeId,
+      );
+    }
+
+    return maintenance;
   }
   async updateMaintenance(
     id: number,
@@ -36,13 +58,26 @@ export class MaintenanceService {
     if (!maintenance) {
       throw new NotFoundException('Maintenance request not found');
     }
-    return this.prisma.maintenance.update({
+    const updatedMaintenance = await this.prisma.maintenance.update({
       where: { id },
       data: {
         ...updateMaintenanceDto,
         status: updateMaintenanceDto.status,
       },
     });
+    const tenantId = maintenance.tenantId;
+    if (updateMaintenanceDto.status === 'resolved' && tenantId) {
+      const tenant = await this.prisma.user.findUnique({
+        where: { id: tenantId },
+      });
+      if (tenant) {
+        await this.mailer.sendMaintenanceCompletedEmail(
+          tenant.email,
+          updatedMaintenance.officeId,
+        );
+      }
+    }
+    return updatedMaintenance;
   }
 
   async getTenantRequests(tenantId: number) {
