@@ -7,8 +7,9 @@ import { RentalModule } from './rental/rental.module';
 import { OfficeModule } from './office/office.module';
 import { PaymentModule } from './payment/payment.module';
 import { AnnouncementModule } from './announcement/announcement.module';
+import { MaintenanceModule } from './maintenance/maintenance.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, RentalModule, OfficeModule, PaymentModule, AnnouncementModule],
+  imports: [AuthModule, PrismaModule, RentalModule, OfficeModule, PaymentModule, AnnouncementModule, MaintenanceModule],
 })
 export class AppModule {}

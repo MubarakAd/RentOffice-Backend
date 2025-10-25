@@ -16,6 +16,7 @@ model User {
   password String
   role     Role     @default(TENANT)
   Rental   Rental[]
+  Maintenance Maintenance[]
 }
 
 model Office {
@@ -26,6 +27,7 @@ model Office {
   officeArea String
   status     OfficeStatus @default(available)
   Rental     Rental[]
+  Maintenance Maintenance[]
 }
 
 model Rental {
@@ -41,16 +43,16 @@ model Rental {
   payment Payment[]
 }
 
-// model Maintenance {
-//   id          Int               @id @default(autoincrement())
-//   officeId    Int
-//   tenantId    Int
-//   description String
-//   startDate   DateTime          @default(now())
-//   status      MaintenanceStatus @default(in_progress)
-//   Office      Office            @relation(fields: [officeId], references: [id])
-//   User        User              @relation(fields: [tenantId], references: [id])
-// }
+model Maintenance {
+  id          Int               @id @default(autoincrement())
+  officeId    Int
+  tenantId    Int
+  description String
+  startDate   DateTime          @default(now())
+  status      MaintenanceStatus @default(in_progress)
+  Office      Office            @relation(fields: [officeId], references: [id])
+  User        User              @relation(fields: [tenantId], references: [id])
+}
 
 model Announcement {
   id         Int      @id @default(autoincrement())
