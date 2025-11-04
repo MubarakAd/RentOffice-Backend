@@ -1,14 +1,18 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PaymentService } from './payment.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 
 import { JwtAuthGuard } from 'src/common/guards/jwt.guard';
 
+@ApiTags('payment')
 @Controller('payment')
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
   @UseGuards(JwtAuthGuard)
   @Post()
+  @ApiOperation({ summary: 'Process a payment' })
+  @ApiResponse({ status: 201, description: 'Payment processed' })
   create(@Body() createPaymentDto: CreatePaymentDto) {
     return this.paymentService.processPayment(createPaymentDto);
   }

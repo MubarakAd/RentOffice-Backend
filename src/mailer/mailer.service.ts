@@ -24,4 +24,11 @@ export class MailerServiceWrapper {
       text: `Your maintenance request for Office #${officeId} has been completed. Thank you for your patience.`,
     });
   }
+  async sendResetPasswordEmail(userEmail: string, resetLink: string) {
+    await this.mailerService.sendMail({
+      to: userEmail,
+      subject: 'Password Reset Request',
+      html: `<p>Click <a href="${resetLink}">here</a> to reset your password</p>`,
+    });
+  }
 }

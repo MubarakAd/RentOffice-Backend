@@ -1,22 +1,31 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-import { HttpException, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { Role } from 'generated/prisma';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateUserDto } from 'src/users/dto/create-user.dto';
-import { UpdateUserDto } from 'src/users/dto/update-user.dto';
+import { CreateUserDto } from 'src/auth/dto/create-user.dto';
+import { UpdateUserDto } from 'src/auth/dto/update-user.dto';
+import { MailerServiceWrapper } from 'src/mailer/mailer.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mailerService: MailerServiceWrapper,
   ) {}
 
   // Create a new user
@@ -71,7 +80,7 @@ export class AuthService {
     const payload = { sub: userId, email, role };
     const access_token = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: '15m',
+      expiresIn: '7h',
     });
     const refresh_token = this.jwtService.sign(payload, {
       secret: process.env.JWT_REFRESH_SECRET,
@@ -122,6 +131,60 @@ export class AuthService {
       where: { id },
     });
   }
+  async forgetPassword(email: string) {
+    const user = await this.findByEmail(email);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const token = randomBytes(32).toString('hex');
+    const hashedToken = bcrypt.hashSync(token, 10);
+    await this.prisma.resetPassword.create({
+      data: {
+        userId: user.id,
+        token: hashedToken,
+        expiresAt: new Date(Date.now() + 3600000), // 1 hour
+      },
+    });
+    const resetLink = `http://localhost:3000/auth/resetpassword?token=${token}`;
+    await this.mailerService.sendResetPasswordEmail(user.email, resetLink);
+    return { message: 'Password reset link sent to email' };
+  }
+  async resetPassword(token: string, newPassword: string) {
+    const candidates = await this.prisma.resetPassword.findMany({
+      where: { expiresAt: { gt: new Date() } },
+    });
+    const resetRecord = candidates.find((r) =>
+      bcrypt.compareSync(token, r.token),
+    );
+    if (!resetRecord) {
+      throw new NotFoundException('Invalid or expired password reset token');
+    }
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: resetRecord.userId },
+      data: { password: hashedPassword },
+    });
+    await this.prisma.resetPassword.deleteMany({
+      where: { userId: resetRecord.userId },
+    });
+    return { message: 'Password has been reset successfully' };
+  }
+
+  async changePassword(id: number, oldPassword: string, newPassword: string) {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (!bcrypt.compareSync(oldPassword, user.password)) {
+      throw new UnauthorizedException('Old password is incorrect');
+    }
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
+    return { message: 'Password has been changed successfully' };
+  }
 
   // Assign a role to a user
   async assignRole(id: number, role: 'ADMIN' | 'TENANT') {
@@ -148,33 +211,4 @@ export class AuthService {
       where: { role: 'ADMIN' },
     });
   }
-
-  // Get user rentals
-  // async getUserRentals(userId: number) {
-  //   const user = await this.findOne(userId);
-  //   if (!user) {
-  //     throw new Error('User not found');
-  //   }
-  //   return this.prisma.rental.findMany({
-  //     where: { tenantId: userId },
-  //     include: {
-  //       office: true,
-  //       payment: true,
-  //     },
-  //   });
-  // }
-
-  // Get user maintenance requests
-  // async getUserMaintenanceRequests(userId: number) {
-  //   const user = await this.findOne(userId);
-  //   if (!user) {
-  //     throw new Error('User not found');
-  //   }
-  //   return this.prisma.maintenance.findMany({
-  //     where: { tenantId: userId },
-  //     include: {
-  //       office: true,
-  //     },
-  //   });
-  // }
 }

@@ -17,6 +17,16 @@ model User {
   role     Role     @default(TENANT)
   Rental   Rental[]
   Maintenance Maintenance[]
+  ResetPassword ResetPassword[]
+}
+
+model ResetPassword {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  User      User     @relation(fields: [userId], references: [id])
 }
 
 model Office {
